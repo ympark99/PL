@@ -1,9 +1,6 @@
 package com.company;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Scanner;
-import java.util.Collections;
+import java.util.*;
 
 // 소수 개수 구하는 클래스
 class Prime{
@@ -54,26 +51,64 @@ public class Main {
     public static void main(String[] args) {
         double startTime = System.currentTimeMillis(); // 시작시간
         Scanner scan = new Scanner(System.in); // 스캐너 생성
-        int N;
+        double N = 0;
 
         while(true){
+            double integer, fraction;
             System.out.print("Input the number of numbers to process: ");
-            N = scan.nextInt();
-            if(N >= 2 && N <= 30) break;
+            try {
+                N = scan.nextDouble(); // N 입력
+
+                // 1개보다 더 많이 입력했는지 검사
+                char ch = scan.nextLine().charAt(0);
+                if(ch == ' '){
+                    scan = new Scanner(System.in); // 스캐너 초기화
+                }
+            }
+            catch (InputMismatchException e){ // 잘못된 값 입력시
+                scan = new Scanner(System.in); // 스캐너 초기화
+            }
+            catch (StringIndexOutOfBoundsException e){ // 정상입력한 경우
+                integer = Math.floor(N);
+                fraction = N - integer;
+                if((N >= 2 && N <= 30) && fraction == 0){
+                    break;
+                }
+            }
         }
 
-        ArrayList<Integer> al = new ArrayList<>(N); // 입력 값 보관할 arraylist 선언
+        ArrayList<Integer> al = new ArrayList<>((int)N); // 입력 값 보관할 arraylist 선언
 
         // 입력한 순서대로 arrayList에 넣어줌(중복인 경우 제거)
         while(true) {
             System.out.println(">> Input the numbers to be processed: ");
             boolean goNext = true;
+            double integer, fraction;
             for (int i = 0; i < N; i++) {
-                int num = scan.nextInt();
-                if(num > 100000 || num < 1) // 입력 오류 시 재입력
+                double num = 0;
+                try {
+                    num = scan.nextDouble();
+                }
+                catch (InputMismatchException e){ // 잘못된 값 입력시
+                    scan = new Scanner(System.in); // 스캐너 초기화
+                }
+                integer = Math.floor(num);
+                fraction = num - integer;
+                if(fraction !=0 || (num > 100000 || num < 1)) // 입력 오류 시 재입력
                     goNext = false;
 
-                if(!al.contains(num)) al.add(num); // 중복이 아니면 리스트에 넣어줌
+                if(!al.contains(num)) al.add((int)num); // 중복이 아니면 리스트에 넣어줌
+            }
+            try{
+                // N개보다 더 많이 입력했는지 검사
+                char ch = scan.nextLine().charAt(0);
+                if(ch == ' '){
+                    scan = new Scanner(System.in); // 스캐너 초기화
+                    goNext = false;
+                }
+            }
+            catch (StringIndexOutOfBoundsException e){
+                goNext = true;
             }
             if(goNext) break;
             al.clear();

@@ -17,16 +17,24 @@ def findAns(start, end, check) :
     return ans
 
 while True :
-    N = int(input(">> Input the number of numbers to process: "))
-    # 2와 30 사이어야 패스
-    if 2 <= N and N <= 30 : break
+    N = input(">> Input the number of numbers to process: ")
+    # 2와 30 사이 자연수어야 패스
+    if N.isdigit() :
+        N = int(N)
+        if 2 <= N and N <= 30 : break
 
 while True :
-    n_list = list(map(int, input(">> Input the numbers to be processed: \n").split()))
     go_next = True
+    n_list = list(input(">> Input the numbers to be processed: \n").split())
     
+    # 자연수여야 패스
+    if not ''.join(map(str,n_list)).isdigit() :
+        continue
+    else :
+        n_list = list(map(int, n_list)) # 정수로 변환
+
     # N개 입력 아니면 false
-    if N != len(n_list) : go_next = False;
+    if N != len(n_list) : continue;
     
     # 입력 값 벗어날 경우 false
     for i in range(len(n_list)) :

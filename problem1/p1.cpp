@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <math.h>
 #include <time.h>
+#include <cstdio>
 
 using namespace std;
 
@@ -31,14 +32,29 @@ int findAns(int start, int end, vector<bool> check){
 int main(){
     clock_t start, end;
     double runtime = 0;
-    int N;
+    double N;
 
     start = clock(); // 시간 측정
 
     while(1){
+        double integer, fraction; // 정수부, 소수부
         cout << ">> Input the number of numbers to process: ";
         cin >> N;
-        if(N >= 2 && N <= 30) break; // 2와 30 사이어야 패스
+        if(cin.fail()){ // 입력 오류시 버퍼 비우고 재입력
+            cin.clear();
+            cin.ignore(1024, '\n');
+        }
+        else{
+            // 1개보다 더 많이 입력한 경우
+            if(getchar() == ' '){
+                cin.clear();
+                cin.ignore(1024, '\n');
+            }        
+            fraction = modf(N, &integer); // 정수, 소수 부분 구하기
+            if((N >= 2 && N <= 30) && fraction == 0){
+                break; // 2와 30 사이, 자연수이면 패스
+            }
+        }
     }
     
     vector<int> v; // 입력한 자연수 저장할 vector
@@ -46,12 +62,21 @@ int main(){
     // 입력한 순서대로 vector에 넣어줌(중복인 경우 제거)
     while(1){
         vector<int> input;
-        int num = 0;
+        double num = 0;
+        double integer, fraction;
         bool goNext = true;
-        cout << ">> Input the numbers to be processed: \n";  
+        cout << ">> Input the numbers to be processed: \n";
+
         for(int i = 0; i < N; i++){
             cin >> num;
-            if(num > 100000 || num < 1) // 입력 오류 시 재입력
+            if(cin.fail()){ // 입력 오류시 버퍼 비우고 재입력
+                cin.clear();
+                cin.ignore(1024, '\n');
+                goNext = false;
+                break;
+            }            
+            fraction = modf(num, &integer); // 정수, 소수 부분 구하기
+            if(fraction != 0 || (num > 100000 || num < 1)) // 실수이거나 입력 오류 시 재입력
                 goNext = false;
             
             bool addNum = true;
@@ -61,8 +86,14 @@ int main(){
                     break;
                 }
             }
-            if(addNum) v.push_back(num);
+            if(addNum) v.push_back((int)num);
         }
+        // N개보다 더 많이 입력한 경우
+        if(getchar() == ' '){
+            cin.clear();
+            cin.ignore(1024, '\n');
+            goNext = false;
+        }        
         if(goNext) break;
         v.clear();
     }
