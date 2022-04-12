@@ -7,9 +7,9 @@
 using namespace std;
 
 unsigned int number(istream& input);
-double factor (istream& in_stream);
-double term (istream& in_stream);
-double expr (istream& in_stream);
+double factor(istream& in_stream);
+double term(istream& in_stream);
+double expr(istream& in_stream);
 
 stack<char> st; // 괄호 저장 스택
 
@@ -20,8 +20,8 @@ int main(){
         getline(cin, str);
         str.erase(remove(str.begin(), str.end(), ' '), str.end());
         stringstream input(str);
-
         double ans = expr(input);
+
         if(!st.empty()){ // 괄호 안닫은 경우 에러
             fprintf(stderr, "Syntax error!!");
             exit(1);
@@ -49,7 +49,7 @@ bool isDigit(char ch){
 unsigned int number(istream& input){
     char ch = lookahead(input);
     if(!isDigit(ch)){
-        fprintf(stderr, "Syntax error!!->isdig");
+        fprintf(stderr, "Syntax error!!");
         exit(1);
     }
     unsigned int num = 0;
@@ -62,17 +62,23 @@ unsigned int number(istream& input){
 
 bool consume(istream& input, char expected) {
     if(expected <= 0){
-        fprintf(stderr, "Syntax error!!->expect");
+        fprintf(stderr, "Syntax error!!");
         exit(1);
     }
     if (lookahead(input) == expected) {
         char ch = (char)input.get();
         // stack push & pop
         if(ch == '(') st.push('(');
-        else if(ch == ')') st.pop();
+        else if(ch == ')'){
+            if(st.empty()){
+                fprintf(stderr, "Syntax error!!");
+                exit(1);
+            }
+            st.pop();
+        }
 
         if(!input.good()){
-            fprintf(stderr, "Syntax error!!->good");
+            fprintf(stderr, "Syntax error!!");
             exit(1);
         }
         return true;
@@ -82,21 +88,22 @@ bool consume(istream& input, char expected) {
 
 double factor(istream& in_stream){
     double value;
+    // 괄호인경우
     if (consume(in_stream, '(')) {
         value = expr(in_stream);  // (<expr>)
         consume(in_stream, ')');
     }
-    // // -
-    // else if (consume(in_stream, '-')) {
-    //     value = - factor (in_stream);
-    // } 
+    // -인 경우
+    else if (consume(in_stream, '-')) {
+        value = - factor(in_stream); // [-]
+    } 
     else {
         value = number(in_stream); // <number>
     }
     return value;
 }
 
-double term (istream& in_stream){
+double term(istream& in_stream){
     double value = factor(in_stream);
     while(true){
         if (consume(in_stream, '*'))
@@ -112,11 +119,11 @@ double expr(istream& in_stream){
     double value = term(in_stream);
     // 중괄호이므로 while
     while(true){
-        if (consume(in_stream, '+'))
+        if(consume(in_stream, '+'))
             value += term (in_stream);
-        else if (consume(in_stream, '-'))
+        else if(consume(in_stream, '-'))
             value -= term(in_stream);
-        else
+        else if(!consume(in_stream, ')')) // )가 더 많은경우 검사
             return value;
     }
 }
