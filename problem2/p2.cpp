@@ -57,6 +57,10 @@ unsigned int number(istream& input){
         num = num * 10 + ch - '0';
         ch = peek(input);
     }
+    if(ch != '+' && ch != '-' && ch != '*' && ch != '/' && ch != '(' && ch != ')' && ch != '\0'){
+        fprintf(stderr, "Syntax error!!");
+        exit(1);
+    }
     return num;
 }
 
@@ -96,10 +100,9 @@ double factor(istream& in_stream){
     // -인 경우
     else if (consume(in_stream, '-')) {
         value = - factor(in_stream); // [-]
-    } 
-    else {
-        value = number(in_stream); // <number>
     }
+    else value = number(in_stream); // <number>
+
     return value;
 }
 
@@ -120,7 +123,7 @@ double expr(istream& in_stream){
     // 중괄호이므로 while
     while(true){
         if(consume(in_stream, '+'))
-            value += term (in_stream);
+            value += term(in_stream);
         else if(consume(in_stream, '-'))
             value -= term(in_stream);
         else if(!consume(in_stream, ')')) // )가 더 많은경우 검사
