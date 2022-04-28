@@ -28,33 +28,33 @@ final class Tokenizer {
     private void tokenize() {
         String text = input.replaceAll("\\s", "");
         while (!text.isEmpty()) {
-            final String current = text;
-            TokenMatch match = Arrays.stream(TokenType.values())
+            final String cur = text;
+            MatchToken match = Arrays.stream(TokenType.values())
                     .filter(t -> t != TokenType.EOF)
-                    .flatMap(t -> mapTokenMatches(t, t.match(current)))
-                    .filter(TokenMatch::isFromStart)
-                    .sorted(Comparator.comparingInt(TokenMatch::length).reversed())
+                    .flatMap(t -> mapMatchesToken(t, t.match(cur)))
+                    .filter(MatchToken::isFromStart)
+                    .sorted(Comparator.comparingInt(MatchToken::length).reversed())
                     .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("cannot find token for " + current));
+                    .orElseThrow(() -> new IllegalArgumentException());
             String content = text.substring(0, match.length());
             text = text.substring(match.length());
             tokens.add(new Token(match.type(), content));
         }
     }
 
-    private Stream<TokenMatch> mapTokenMatches(TokenType type, Matcher matcher) {
-        List<TokenMatch> matches = new ArrayList<>();
+    private Stream<MatchToken> mapMatchesToken(TokenType type, Matcher matcher) {
+        List<MatchToken> matches = new ArrayList<>();
         while (matcher.find()) {
-            matches.add(new TokenMatch(type, matcher.start(), matcher.end()));
+            matches.add(new MatchToken(type, matcher.start(), matcher.end()));
         }
         return matches.stream();
     }
 
-    private class TokenMatch {
+    private class MatchToken {
         private final TokenType type;
         private final int from, to;
 
-        TokenMatch(TokenType type, int from, int to) {
+        MatchToken(TokenType type, int from, int to) {
             this.type = type;
             this.from = from;
             this.to = to;
@@ -93,10 +93,6 @@ enum TokenType {
     Matcher match(String input) {
         return pattern.matcher(input);
     }
-
-//    boolean matches(String input) {
-//        return pattern.matcher(input).matches();
-//    }
 }
 
 
@@ -120,7 +116,7 @@ final class Token {
 
     double getNumber() {
         if (type != TokenType.NUMBER) {
-            throw new IllegalArgumentException("cannot get value of " + type.name());
+            throw new IllegalArgumentException();
         }
         return Double.parseDouble(content);
     }
@@ -137,7 +133,7 @@ final class Parser {
 
     public double expr() {
         double value = term();
-        while (any(TokenType.PLUS, TokenType.MINUS)) {
+        while (isAny(TokenType.PLUS, TokenType.MINUS)) {
             TokenType oper = token.getType();
             getNextToken();
             value = (oper == TokenType.PLUS) ? value + term() : value - term();
@@ -156,7 +152,7 @@ final class Parser {
 
     private double term() {
         double value = factor();
-        while (any(TokenType.MULTI, TokenType.DIVISION)) { // * or / 처리
+        while (isAny(TokenType.MULTI, TokenType.DIVISION)) { // * or / 처리
             TokenType oper = token.getType();
             getNextToken();
             double right = factor();
@@ -165,7 +161,7 @@ final class Parser {
             } else if (right != 0){
                 value = value / right;
             } else {
-                throw new IllegalArgumentException("cannot divide by 0");
+                throw new IllegalArgumentException();
             }
         }
         return value;
@@ -173,18 +169,24 @@ final class Parser {
 
     private double factor() {
         double value;
-        if (match(TokenType.OPEN_PARAM)) { // (<expr>)
+        // (<expr>)
+        if (match(TokenType.OPEN_PARAM)) {
             paramStack.st.push("("); // 스택에 push
             getNextToken();
             value = expr();
             assertMatch(TokenType.CLOSE_PARAM);
             getNextToken();
-            return value;
         }
-        // todo [-]
-        assertMatch(TokenType.NUMBER);
-        value = token.getNumber();
-        getNextToken();
+        // [-]
+        else if(match(TokenType.MINUS)){
+            getNextToken();
+            value = -1 * factor();
+        }
+        else{
+            assertMatch(TokenType.NUMBER);
+            value = token.getNumber();
+            getNextToken();
+        }
         return value;
     }
 
@@ -192,22 +194,16 @@ final class Parser {
         return this.token.getType() == type;
     }
 
-    private boolean any(TokenType... types) {
+    private boolean isAny(TokenType... types) {
         return Arrays.stream(types).anyMatch(t -> t == token.getType());
     }
 
     private void assertMatch(TokenType type) {
         if (!match(type))
-            throw new IllegalStateException("expected " + type.name() + " got " + this.token.getType());
+            throw new IllegalStateException();
     }
 
-//    private void assertAny(TokenType... types) {
-//        if (!any(types)) {
-//            throw new IllegalStateException("expected any of " + Arrays.stream(types).map(TokenType::name).collect(Collectors.joining(", ")) + " got " + this.token.getType());
-//        }
-//    }
-
-    private void getNextToken() {
+    private void getNextToken() { // 다음 토큰으로 이동
         this.token = tokenizer.next();
     }
 }
@@ -233,14 +229,11 @@ public class Calculator {
                     System.out.println("Syntax error!!");
                     System.exit(1);
                 }
-                // 스괄에2
-
 
                 // 정수인 경우 소수점 출력 x
                 if(value == (int)value) System.out.println((int)value);
                 else System.out.println(value);
             } catch (Exception e) {
-                System.out.println(e.getMessage());
                 System.out.println("Syntax error!!");
                 System.exit(1);
             }
