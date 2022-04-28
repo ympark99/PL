@@ -1,175 +1,229 @@
-import jdk.jfr.Unsigned;
+import java.util.Scanner;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Stream;
 
-import java.io.InputStream;
-import java.util.*;
+final class Tokenizer {
+    private final static Token EOF_TOK = new Token(TokenType.EOF);
+    private List<Token> tokens;
+    private final String input;
+    private int position;
 
-interface Stack{
-    java.util.Stack<Character> st = new java.util.Stack<>();
-}
+    Tokenizer(String input) {
+        this.input = input;
+        this.tokens = new ArrayList<>();
+        this.position = 0;
+        this.tokenize();
+    }
 
-class Peek{
-    InputStream inputStream;
-    public Peek(InputStream inputStream){
-        this.inputStream = inputStream;
+    Token next() {
+        return position < tokens.size() ? tokens.get(position++) : EOF_TOK;
     }
-    public char getPeek(){
-        char ch = inputStream.read();
-        if(inputStream.good())
-            return ch;
-        return 0;
-    }
-}
 
-class Lookahead{
-    InputStream inputStream;
-    public Lookahead(InputStream inputStream){
-        this.inputStream = inputStream;
-    }
-    public char getLookAhead(){
-        Peek peek = new Peek(inputStream);
-        inputStream >> ws;
-        return peek.getPeek();
-    }
-}
-
-class Number{
-    InputStream inputStream;
-    public Number(InputStream inputStream){
-        this.inputStream = inputStream;
-    }
-    public int getNumber(){
-        Lookahead lookahead = new Lookahead(inputStream);
-        Peek peek = new Peek(inputStream);
-        char ch = lookahead.getLookAhead();
-        if(!isDigit(ch)){
-            System.out.print("Syntax error!!");
-            System.exit(1);
+    private void tokenize() {
+        String text = input.replaceAll("\\s", "");
+        while (!text.isEmpty()) {
+            final String current = text;
+            TokenMatch match = Arrays.stream(TokenType.values())
+                    .filter(t -> t != TokenType.EOF)
+                    .flatMap(t -> mapTokenMatches(t, t.match(current)))
+                    .filter(TokenMatch::isFromStart)
+                    .sorted(Comparator.comparingInt(TokenMatch::length).reversed())
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("cannot find token for " + current));
+            String content = text.substring(0, match.length());
+            text = text.substring(match.length());
+            tokens.add(new Token(match.type(), content));
         }
-        int num = 0;
-        while (isDigit(ch) && inputStream >> ch){
-            num = num * 10 + ch - '0';
-            ch = peek.getPeek();
-        }
-        return num;
     }
-    public long unsigned32(int n){
-        return n & 0xFFFFFFFFL;
-    }
-    boolean isDigit(char ch){
-        return ch >= '0' && ch <= '9';
-    }
-}
 
-class Consume{
-    InputStream inputStream;
-    public Consume(InputStream inputStream){
-        this.inputStream = inputStream;
+    private Stream<TokenMatch> mapTokenMatches(TokenType type, Matcher matcher) {
+        List<TokenMatch> matches = new ArrayList<>();
+        while (matcher.find()) {
+            matches.add(new TokenMatch(type, matcher.start(), matcher.end()));
+        }
+        return matches.stream();
     }
-    public boolean getConsume(char expected){
-        Lookahead lookahead = new Lookahead(inputStream);
-        if(expected <= 0){
-            System.out.print("Syntax error!!");
-            System.exit(1);
-        }
-        if(lookahead.getLookAhead() == expected){
-//            char ch = (char)inputStream.input();
-            char ch = 'a';
-            // stack push & pop
-            if(ch == '(') Stack.st.push('(');
-            else if(ch == ')'){
-                if(Stack.st.empty()){
-                    System.out.print("Syntax error!!");
-                    System.exit(1);
-                }
-                Stack.st.pop();
-            }
 
-            if(!inputStream.good()){
-                System.out.print("Syntax error!!");
-                System.exit(1);
-            }
-            return true;
+    private class TokenMatch {
+
+        private final TokenType type;
+        private final int from, to;
+
+        TokenMatch(TokenType type, int from, int to) {
+            this.type = type;
+            this.from = from;
+            this.to = to;
         }
-        return false;
+
+        int length() {
+            return to - from;
+        }
+
+        boolean isFromStart() {
+            return from == 0;
+        }
+
+        TokenType type() {
+            return type;
+        }
+
     }
 }
 
-class Factor{
-    InputStream inputStream;
-    public Factor(InputStream inputStream){
-        this.inputStream = inputStream;
+enum TokenType {
+    NUMBER("(\\d+)"),
+    PLUS("\\+"),
+    MINUS("-"),
+    MULTI("\\*"),
+    SLASH("/"),
+    OPEN_PARAM("\\("),
+    CLOSE_PARAM("\\)"),
+    EOF("");
+
+    private final Pattern pattern;
+
+    TokenType(String regexp) {
+        this.pattern = Pattern.compile(regexp);
     }
-    public double getFactor(){
-        Expr expr = new Expr(inputStream);
-        Consume consume = new Consume(inputStream);
-        Factor factor = new Factor(inputStream);
-        Number number = new Number(inputStream);
-        double value;
-        if(consume.getConsume('(')){
-            value = expr.getExpr();
-            consume.getConsume(')');
+
+    Matcher match(String input) {
+        return pattern.matcher(input);
+    }
+
+    boolean matches(String input) {
+        return pattern.matcher(input).matches();
+    }
+}
+
+
+final class Token {
+    private final TokenType type;
+    private final String content;
+
+    Token(TokenType type) {
+        this.type = type;
+        this.content = "";
+    }
+
+    Token(TokenType type, String content) {
+        this.type = type;
+        this.content = content;
+    }
+
+    TokenType getType() {
+        return type;
+    }
+
+    double value() {
+        if (type != TokenType.NUMBER) {
+            throw new IllegalArgumentException("cannot get value of " + type.name());
         }
-        else if(consume.getConsume('-')){
-            value = - factor.getFactor();
+        return Double.parseDouble(content);
+    }
+}
+
+final class Parser {
+    private Tokenizer tokenizer;
+    private Token token;
+
+    Parser(Tokenizer tokenizer) {
+        this.tokenizer = tokenizer;
+        this.token = tokenizer.next();
+    }
+
+    public double expr() {
+        double value = parseTerm();
+        while (any(TokenType.PLUS, TokenType.MINUS)) {
+            TokenType op = token.getType();
+            getNextToken();
+            value = op == TokenType.PLUS ? value + parseTerm() : value - parseTerm();
         }
-        else value = number.getNumber();
         return value;
     }
-}
 
-class Term{
-    InputStream inputStream;
-    public Term(InputStream inputStream){
-        this.inputStream = inputStream;
+    private double parseTerm() {
+        double value = factor();
+        while (any(TokenType.MULTI, TokenType.SLASH)) {
+            TokenType op = token.getType();
+            getNextToken();
+            double right = factor();
+            if (op == TokenType.MULTI) {
+                value = value * right;
+            } else if (right != 0){
+                value = value / right;
+            } else {
+                throw new IllegalArgumentException("cannot divide by 0");
+            }
+        }
+        return value;
     }
-    public double getTerm(){
-        Factor factor = new Factor(inputStream);
-        Consume consume = new Consume(inputStream);
-        double value = factor.getFactor();
-        while(true){
-            if(consume.getConsume('*'))
-                value *= factor.getFactor();
-            else if(consume.getConsume('/'))
-                value /= factor.getFactor();
-            else
-                return value;
+
+    private double factor() {
+        double value;
+        if (match(TokenType.OPEN_PARAM)) {
+            getNextToken();
+            value = expr();
+            assertMatch(TokenType.CLOSE_PARAM);
+            getNextToken();
+            return value;
+        }
+        // todo [-]
+        assertMatch(TokenType.NUMBER);
+        value = token.value();
+        getNextToken();
+        return value;
+    }
+
+    private boolean match(TokenType type) {
+        return this.token.getType() == type;
+    }
+
+    private boolean any(TokenType... types) {
+        return Arrays.stream(types).anyMatch(t -> t == token.getType());
+    }
+
+    private void assertMatch(TokenType type) {
+        if (!match(type))
+            throw new IllegalStateException("expected " + type.name() + " got " + this.token.getType());
+    }
+
+    private void assertAny(TokenType... types) {
+        if (!any(types)) {
+            throw new IllegalStateException("expected any of " + Arrays.stream(types).map(TokenType::name).collect(Collectors.joining(", ")) + " got " + this.token.getType());
         }
     }
-}
 
-class Expr{
-    InputStream inputStream;
-    public Expr(InputStream inputStream){
-        this.inputStream = inputStream;
-    }
-    public double getExpr(){
-        Term term = new Term(inputStream);
-        Consume consume = new Consume(inputStream);
-        double value = term.getTerm();
-        // 중괄호이므로 while
-        while(true){
-            if(consume.getConsume('+'))
-                value += term.getTerm();
-            else if(consume.getConsume('-'))
-                value -= term.getTerm();
-            else if(!consume.getConsume(')')) // )가 더 많은경우 검사
-                return value;
-        }
+    private void getNextToken() {
+        this.token = tokenizer.next();
     }
 }
 
-public class p2 {
+public class Calculator {
     public static void main(String[] args) {
         Scanner scan = new Scanner(System.in);
-        while(true){
+        System.out.print(">> ");
+        while (scan.hasNextLine()) {
+            String input = scan.nextLine();
+            try {
+                Tokenizer tokenizer = new Tokenizer(input);
+                Parser parser = new Parser(tokenizer);
+
+                double value = parser.expr();
+                // 정수인 경우 소수점 출력 x
+                if(value == (int)value) System.out.println((int)value);
+                else System.out.println(value);
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                System.out.println("Syntax error!!");
+                System.exit(1);
+            }
             System.out.print(">> ");
-            String str = scan.nextLine(); // 수식 받을 문자열
-            str = str.replaceAll(" ", ""); // 공백 제거
-//            String[] strings = str.split(" ");
-//
-//            List<Integer> ints = Stream.of(strings).
-//                    map(value -> Integer.valueOf(value)).
-//                    collect(Collectors.toList());
         }
     }
 }
