@@ -1,12 +1,12 @@
 import java.util.Scanner;
 import java.util.Arrays;
-import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
+import java.util.Stack;
 
 final class Tokenizer {
     private final static Token EOF_TOK = new Token(TokenType.EOF);
@@ -51,7 +51,6 @@ final class Tokenizer {
     }
 
     private class TokenMatch {
-
         private final TokenType type;
         private final int from, to;
 
@@ -72,7 +71,6 @@ final class Tokenizer {
         TokenType type() {
             return type;
         }
-
     }
 }
 
@@ -81,7 +79,7 @@ enum TokenType {
     PLUS("\\+"),
     MINUS("-"),
     MULTI("\\*"),
-    SLASH("/"),
+    DIVISION("/"),
     OPEN_PARAM("\\("),
     CLOSE_PARAM("\\)"),
     EOF("");
@@ -96,9 +94,9 @@ enum TokenType {
         return pattern.matcher(input);
     }
 
-    boolean matches(String input) {
-        return pattern.matcher(input).matches();
-    }
+//    boolean matches(String input) {
+//        return pattern.matcher(input).matches();
+//    }
 }
 
 
@@ -120,7 +118,7 @@ final class Token {
         return type;
     }
 
-    double value() {
+    double getNumber() {
         if (type != TokenType.NUMBER) {
             throw new IllegalArgumentException("cannot get value of " + type.name());
         }
@@ -138,22 +136,31 @@ final class Parser {
     }
 
     public double expr() {
-        double value = parseTerm();
+        double value = term();
         while (any(TokenType.PLUS, TokenType.MINUS)) {
-            TokenType op = token.getType();
+            TokenType oper = token.getType();
             getNextToken();
-            value = op == TokenType.PLUS ? value + parseTerm() : value - parseTerm();
+            value = (oper == TokenType.PLUS) ? value + term() : value - term();
+        }
+        TokenType isClose = token.getType();
+        // 닫는 괄호 처리
+        if(isClose == TokenType.CLOSE_PARAM) {
+            // 스택에 남아있으면 pop, 없으면 error
+            if (paramStack.st.empty()) {
+                System.out.println("Syntax error!!");
+                System.exit(1);
+            } else paramStack.st.pop();
         }
         return value;
     }
 
-    private double parseTerm() {
+    private double term() {
         double value = factor();
-        while (any(TokenType.MULTI, TokenType.SLASH)) {
-            TokenType op = token.getType();
+        while (any(TokenType.MULTI, TokenType.DIVISION)) { // * or / 처리
+            TokenType oper = token.getType();
             getNextToken();
             double right = factor();
-            if (op == TokenType.MULTI) {
+            if (oper == TokenType.MULTI) {
                 value = value * right;
             } else if (right != 0){
                 value = value / right;
@@ -166,7 +173,8 @@ final class Parser {
 
     private double factor() {
         double value;
-        if (match(TokenType.OPEN_PARAM)) {
+        if (match(TokenType.OPEN_PARAM)) { // (<expr>)
+            paramStack.st.push("("); // 스택에 push
             getNextToken();
             value = expr();
             assertMatch(TokenType.CLOSE_PARAM);
@@ -175,7 +183,7 @@ final class Parser {
         }
         // todo [-]
         assertMatch(TokenType.NUMBER);
-        value = token.value();
+        value = token.getNumber();
         getNextToken();
         return value;
     }
@@ -193,15 +201,20 @@ final class Parser {
             throw new IllegalStateException("expected " + type.name() + " got " + this.token.getType());
     }
 
-    private void assertAny(TokenType... types) {
-        if (!any(types)) {
-            throw new IllegalStateException("expected any of " + Arrays.stream(types).map(TokenType::name).collect(Collectors.joining(", ")) + " got " + this.token.getType());
-        }
-    }
+//    private void assertAny(TokenType... types) {
+//        if (!any(types)) {
+//            throw new IllegalStateException("expected any of " + Arrays.stream(types).map(TokenType::name).collect(Collectors.joining(", ")) + " got " + this.token.getType());
+//        }
+//    }
 
     private void getNextToken() {
         this.token = tokenizer.next();
     }
+}
+
+// 괄호 스택 관리
+class paramStack{
+    public static Stack<String> st = new Stack<>();
 }
 
 public class Calculator {
@@ -215,6 +228,14 @@ public class Calculator {
                 Parser parser = new Parser(tokenizer);
 
                 double value = parser.expr();
+                // 스택 닫는 괄호 남아있는 경우 에러
+                if(!paramStack.st.empty()){
+                    System.out.println("Syntax error!!");
+                    System.exit(1);
+                }
+                // 스괄에2
+
+
                 // 정수인 경우 소수점 출력 x
                 if(value == (int)value) System.out.println((int)value);
                 else System.out.println(value);
