@@ -1,12 +1,7 @@
-import java.util.Scanner;
-import java.util.Arrays;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import java.util.stream.Stream;
-import java.util.Stack;
 
 final class Tokenizer {
     private final static Token EOF_TOK = new Token(TokenType.EOF);
@@ -89,7 +84,6 @@ enum TokenType {
     TokenType(String regexp) {
         this.pattern = Pattern.compile(regexp);
     }
-
     Matcher match(String input) {
         return pattern.matcher(input);
     }
@@ -143,10 +137,12 @@ final class Parser {
         if(isClose == TokenType.CLOSE_PARAM) {
             // 스택에 남아있으면 pop, 없으면 error
             if (paramStack.st.empty()) {
-                System.out.println("Syntax error!!");
-                System.exit(1);
+                throw new IllegalArgumentException();
             } else paramStack.st.pop();
         }
+        else if(isClose == TokenType.OPEN_PARAM) // (만 있는 경우
+            throw new IllegalArgumentException();
+
         return value;
     }
 
@@ -222,14 +218,10 @@ public class Calculator {
             try {
                 Tokenizer tokenizer = new Tokenizer(input);
                 Parser parser = new Parser(tokenizer);
-
                 double value = parser.expr();
                 // 스택 닫는 괄호 남아있는 경우 에러
-                if(!paramStack.st.empty()){
-                    System.out.println("Syntax error!!");
-                    System.exit(1);
-                }
-
+                if(!paramStack.st.empty())
+                    throw new EmptyStackException();
                 // 정수인 경우 소수점 출력 x
                 if(value == (int)value) System.out.println((int)value);
                 else System.out.println(value);
