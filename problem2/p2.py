@@ -1,5 +1,5 @@
 import re
-# todo : 숫자 띄는경우
+
 class Calculator:
     def __init__(self):
         self.line: str = ''
@@ -14,7 +14,7 @@ class Calculator:
 
     def expr(self) -> float:
         result = self.term()
-        while self.is_next('[-+]'):
+        while self.is_next('[-+]'):  # + or -
             if self.current == '+':
                 result += self.term()
             else:
@@ -30,15 +30,15 @@ class Calculator:
                 try:
                     result /= self.factor()
                 except ZeroDivisionError:
-                    result = float('NaN') # 숫자 아닌 경우
+                    result = float('NaN')  # 숫자 아닌 경우
         return result
 
     def factor(self) -> float:
-        if self.is_next(r'[0-9]*\.?[0-9]+'):
+        if self.is_next(r'[0-9]*\.?[0-9]+'):  # number 입력 경우
             return float(self.current) if '.' in self.current else int(self.current)
-        if self.is_next('-'): # [-]
+        if self.is_next('-'):  # [-]
             return -self.factor()
-        if self.is_next('[(]'): # (expr)
+        if self.is_next('[(]'):  # (expr)
             result = self.expr()
             if not self.is_next('[)]'): 
                 raise SyntaxError
@@ -56,7 +56,8 @@ class Calculator:
 if __name__ == '__main__':
     calc = Calculator()
     while True:
-        line = input('>> ')
+        lineInput = input('>> ')
+        line = lineInput.replace(" ", "")
         try:
             print(calc.parser(line))
         except SyntaxError as e:
