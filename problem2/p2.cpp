@@ -18,7 +18,7 @@ int main(){
         cout << ">> ";
         string str; // 수식 받을 문자열
         getline(cin, str);
-        str.erase(remove(str.begin(), str.end(), ' '), str.end());
+        str.erase(remove(str.begin(), str.end(), ' '), str.end()); // 공백 제거
         stringstream input(str);
         double ans = expr(input);
 
@@ -57,6 +57,7 @@ unsigned int number(istream& input){
         num = num * 10 + ch - '0';
         ch = peek(input);
     }
+    // 올바른 number 입력 아니면 에러 처리
     if(ch != '+' && ch != '-' && ch != '*' && ch != '/' && ch != '(' && ch != ')' && ch != '\0'){
         fprintf(stderr, "Syntax error!!");
         exit(1);
@@ -126,7 +127,7 @@ double expr(istream& in_stream){
             value += term(in_stream);
         else if(consume(in_stream, '-'))
             value -= term(in_stream);
-        else if(!consume(in_stream, ')')) // )가 더 많은경우 검사
+        else if(!consume(in_stream, '(') && !consume(in_stream, ')')) // (만 있는 경우, )가 더 많은경우 검사
             return value;
     }
 }
