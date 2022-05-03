@@ -29,6 +29,8 @@ class Calculator:
             else:
                 try:
                     result /= self.factor()
+                    if int(result) == result :
+                        result = int(result)
                 except ZeroDivisionError:
                     result = float('NaN')  # 숫자 아닌 경우
         return result
