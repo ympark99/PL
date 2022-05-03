@@ -156,8 +156,8 @@ final class Parser {
                 value = value * right;
             } else if (right != 0){
                 value = value / right;
-            } else {
-                throw new IllegalArgumentException();
+            } else { // 0인경우
+                throw new ArithmeticException();
             }
         }
         return value;
@@ -225,7 +225,10 @@ public class Calculator {
                 // 정수인 경우 소수점 출력 x
                 if(value == (int)value) System.out.println((int)value);
                 else System.out.println(value);
-            } catch (Exception e) {
+            } catch (ArithmeticException e){ // 0으로 나눈 경우
+                System.out.println("NaN");
+            }
+            catch (Exception e) {
                 System.out.println("Syntax error!!");
                 System.exit(1);
             }
