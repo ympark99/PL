@@ -10,7 +10,7 @@
 // 지점 내 스터디 공간
 typedef struct Room{
     struct Room *next;
-    int unique_room; // 스터디 공간 고유 번호(1~6)
+    int unique_room; // 스터디 공간 고유 번호(1~5)
     int room_type; // 허용 인원(1~10인실)
     char name[10]; // 공간 이름
     int floor; // 위치하는 층
@@ -29,6 +29,7 @@ void first_page(Study *study);
 void master_mode(Study *study);
 void user_mode(Study *study);
 void append_study(Study *study, int unique_study);
+void append_room(Room *cur, int unique_room);
 
 int main(void){
     Study *head = malloc(sizeof(Study));
@@ -49,6 +50,7 @@ void first_page(Study *study){
         fprintf(stdout, "2. 사용자 모드\n");
         fprintf(stdout, "3. 프로그램 종료\n");
         fprintf(stdout, "-----------------\n");
+        fprintf(stdout, ">> ");
 
         int num = 0;
         scanf("%d", &num); // 초기 화면 모드 선택
@@ -75,17 +77,23 @@ void first_page(Study *study){
 
 // 관리자 모드
 void master_mode(Study *study){
+    fprintf(stdout, "\n   관리자 모드\n");
     fprintf(stdout, "-----------------\n");
     fprintf(stdout, "1. 지점 추가\n");
     fprintf(stdout, "2. 지점 수정\n");
     fprintf(stdout, "3. 지점 삭제\n");
     fprintf(stdout, "4. 초기 화면 이동\n");
     fprintf(stdout, "-----------------\n");
+    fprintf(stdout, ">> ");
 
-    int num;
+    int num = 0;
     scanf("%d", &num); // 모드 선택
+    if(num < 1 || num > 4){
+        fprintf(stderr, "잘못된 입력\n");
+        return;
+    }
 
-    if(num == 4) first_page(study);
+    if(num == 4) return;
     // 지점 추가
     else if(num == 1){
         int unique = 0;
@@ -109,7 +117,80 @@ void master_mode(Study *study){
         fprintf(stdout, "%d 지점 추가 완료\n", unique);
         return;
     }
-    // todo : 수정
+    else if(num == 2){
+        fprintf(stdout, "\n     지점 수정\n");
+        fprintf(stdout, "-------------------\n");
+        fprintf(stdout, "1. 스터디 공간 추가\n");
+        fprintf(stdout, "2. 스터디 공간 수정\n");
+        fprintf(stdout, "3. 스터디 공간 삭제\n");
+        fprintf(stdout, "4. 초기 화면 이동\n");
+        fprintf(stdout, "-------------------\n");
+        fprintf(stdout, ">> ");
+
+        int edit_mode = 0;
+        scanf("%d", &edit_mode); // 모드 선택
+        if(edit_mode < 1 || edit_mode > 4){
+            fprintf(stderr, "잘못된 입력\n");
+            return;
+        }
+
+        if(edit_mode == 4) return;
+
+        // 스터디 공간 추가
+        else if(edit_mode == 1){
+            int unique = 0;
+            fprintf(stdout, "공간을 추가할 고유 지점 번호 입력 : ");
+            scanf("%d", &unique); // 지점 번호 선택
+            if(unique < 1 || unique > 6){
+                fprintf(stderr, "고유 지점 번호 입력 오류\n");
+                return;
+            }
+
+            Study *cur = study->next;
+            bool go_next = false;
+            // 해당 지점 찾기
+            while (cur != NULL){
+                if(unique == cur->unique_study){
+                    go_next = true;
+                    break;
+                }
+                cur = cur->next;
+            }
+            if(!go_next){
+                fprintf(stderr, "입력한 %d 지점이 없습니다.\n", unique);
+                return;
+            }
+
+            // 고유 공간 번호 입력받기
+            int uni_room = 0;
+            fprintf(stdout, "추가할 고유 공간 번호 입력 : ");
+            scanf("%d", &uni_room); // 공간 번호 선택
+            if(uni_room < 1 || uni_room > 5){
+                fprintf(stderr, "고유 공간 번호 입력 오류\n");
+                return;
+            }
+
+            Room *cur_room = cur->studyRoom->next;
+            // 해당 지점 찾기
+            while (cur_room != NULL){
+                if(uni_room == cur_room->unique_room){
+                    fprintf(stdout, "중복된 고유 공간 번호입니다.\n");
+                    return;
+                }
+                cur_room = cur_room->next;
+            }
+            append_room(cur->studyRoom, uni_room); // 스터디 공간 추가
+            fprintf(stdout, "%d 공간 추가 완료\n", uni_room);
+            return;
+        }
+        // todo : 스터디 공간 수정
+        // todo : 스터디 공간 삭제
+        else{
+            fprintf(stdout, "잘못된 입력\n");
+            return;
+        }
+
+    }
     // 지점 삭제
     else if(num == 3){
         int unique = 0;
@@ -158,10 +239,11 @@ void append_study(Study *study, int unique_study){
 	Study *newStudy = (Study *)malloc(sizeof(Study));
 	memset(newStudy, 0, sizeof(Study));
 	newStudy->unique_study = unique_study;
+	newStudy->next = NULL;
 
     newStudy->studyRoom = (Room *)malloc(sizeof(Room));
     memset(newStudy->studyRoom, 0, sizeof(Room));
-	newStudy->next = NULL;
+    newStudy->studyRoom->next = NULL;
 
 	if (study->next == NULL)
 		study->next = newStudy;
@@ -169,8 +251,26 @@ void append_study(Study *study, int unique_study){
 		cur = study->next;
 		while (cur->next != NULL)
 			cur = cur->next;
-
 		cur->next = newStudy;
+	}
+}
+
+// 스터디 공간 추가
+void append_room(Room *cur, int unique_room){
+    Room *cur_room;
+
+    Room *newRoom = (Room *)malloc(sizeof(Room));
+    memset(newRoom, 0, sizeof(Room));
+    newRoom->unique_room = unique_room;
+    newRoom->next = NULL;
+
+	if (cur->next == NULL)
+		cur->next = newRoom;
+	else {
+		cur_room = cur->next;
+		while (cur_room->next != NULL)
+			cur_room = cur_room->next;
+		cur_room->next = newRoom;
 	}
 }
 
