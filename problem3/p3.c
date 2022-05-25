@@ -6,7 +6,7 @@
 #include <string.h>
 
 // 스터디공간 study.txt
-// *|1|
+// *|지점번호|
 
 // 방 room.txt
 // *|지점번호|방번호|허용인원|공간이름|층|책상|컴퓨터|
@@ -16,43 +16,39 @@
 
 #define BUF_SIZE 1024
 
-// 지점 내 스터디 공간
-typedef struct Room{
-    struct Room *next;
-    int unique_room; // 스터디 공간 고유 번호(1~5)
-    int room_type; // 허용 인원(1~10인실)
-    char name[10]; // 공간 이름
-    int floor; // 위치하는 층
-    int table; // 책상 수
-    int cpu; // 보유 컴퓨터 개수
-    char *reserved_time[24]; // 예약된 시간의 사용자 ID (0~23시 시작 시간)
-}Room;
+// // 지점 내 스터디 공간
+// typedef struct Room{
+//     struct Room *next;
+//     int unique_room; // 스터디 공간 고유 번호(1~5)
+//     int room_type; // 허용 인원(1~10인실)
+//     char name[10]; // 공간 이름
+//     int floor; // 위치하는 층
+//     int table; // 책상 수
+//     int cpu; // 보유 컴퓨터 개수
+//     char *reserved_time[24]; // 예약된 시간의 사용자 ID (0~23시 시작 시간)
+// }Room;
 
-// 지점
-typedef struct Study{
-    struct Study *next;
-    int unique_study; // 지점 고유 번호(1~6)
-    Room *studyRoom; // 방
-}Study;
+// // 지점
+// typedef struct Study{
+//     struct Study *next;
+//     int unique_study; // 지점 고유 번호(1~6)
+//     Room *studyRoom; // 방
+// }Study;
 
 // 함수 정의
-void first_page(Study *study);
-void master_mode(Study *study);
-void user_mode(Study *study);
+void first_page();
+void master_mode();
+void user_mode();
 bool find_file(FILE *fp, int target, int mode);
 bool delete_file(FILE *fp, int uni_study, int uni_room, int mode);
 
 int main(void){
-    Study *head = malloc(sizeof(Study));
-    head->next = NULL;
-
-    first_page(head);
-
+    first_page();
     exit(0);
 }
 
 // 초기 화면
-void first_page(Study *study){
+void first_page(){
     while(1){
         fprintf(stdout, "\n-----------------\n");
         fprintf(stdout, "    초기화면\n");
@@ -72,10 +68,10 @@ void first_page(Study *study){
 
         switch (num){
             case 1: // 관리자 모드
-                master_mode(study);
+                master_mode();
                 break;
             case 2: // 사용자 모드
-                user_mode(study);
+                user_mode();
                 break;
             case 3: // 종료
                 exit(0);
@@ -87,7 +83,7 @@ void first_page(Study *study){
 }
 
 // 관리자 모드
-void master_mode(Study *study){
+void master_mode(){
     fprintf(stdout, "\n   관리자 모드\n");
     fprintf(stdout, "-----------------\n");
     fprintf(stdout, "1. 지점 추가\n");
@@ -276,7 +272,107 @@ void master_mode(Study *study){
             fprintf(stdout, "%d 지점 %d 공간 추가 완료\n", unique, uni_room);
             return;
         }
-        // todo : 스터디 공간 수정
+        // 스터디 공간 수정
+        else if(edit_mode == 2){
+            // 지점 번호 확인
+            FILE *fp = fopen("study.txt", "r+t");
+            if(fp == NULL){
+                fprintf(stdout, "현재 추가된 지점이 없습니다\n");
+                return;
+            }
+
+            int unique = 0;
+            fprintf(stdout, "공간을 수정할 고유 지점 번호 입력 : ");
+            scanf("%d", &unique); // 지점 번호 선택
+            if(unique < 1 || unique > 6){
+                fprintf(stderr, "고유 지점 번호 입력 오류\n");
+                return;
+            }
+            // 지점 있는지 확인
+            if(!find_file(fp, unique, 1)){
+                fprintf(stderr, "입력한 %d 지점이 없습니다.\n", unique);
+                fclose(fp);
+                return;
+            }
+            fclose(fp);
+            fp = fopen("room.txt", "r+t"); // 삭제할 fp선언
+            if(fp == NULL){
+                fprintf(stdout, "현재 추가된 공간이 없습니다\n");
+                return;
+            }
+            // 수정할 공간 번호 입력
+            int uni_room = 0;
+            fprintf(stdout, "수정할 고유 공간 번호 입력 : ");
+            scanf("%d", &uni_room); // 공간 번호 선택
+            if(uni_room < 1 || uni_room > 5){
+                fprintf(stderr, "고유 공간 번호 입력 오류\n");
+                return;
+            }
+            // 수정할 공간 있는지 확인
+            if(!find_file(fp, uni_room, 2)){
+                fprintf(stderr, "입력한 %d 공간이 없습니다.\n", uni_room);
+                fclose(fp);
+                return;
+            }
+            // 수정할 정보 입력
+            int room_type = 0; // 허용 인원
+            fprintf(stdout, "-------------------\n");
+            fprintf(stdout, "수정할 허용 인원 입력 : ");
+            scanf("%d", &room_type); // 공간 번호 선택
+            if(room_type < 1 || room_type > 10){
+                fprintf(stderr, "허용 인원 입력 오류\n");
+                return;
+            }
+            char room_name[BUF_SIZE]; // 이름
+            fprintf(stdout, "수정할 이름 입력 : ");
+            scanf("%s", room_name);
+            int floor; // 층
+            fprintf(stdout, "수정할 위치하는 층 입력 : ");
+            scanf("%d", &floor);
+            int table; // 책상 수
+            fprintf(stdout, "수정할 책상 개수 입력 : ");
+            scanf("%d", &table);
+            int cpu; // 컴퓨터
+            fprintf(stdout, "수정할 컴퓨터 개수 입력 : ");
+            scanf("%d", &cpu);
+
+            delete_file(fp, unique, uni_room, 2); // 기존 공간 삭제
+            // 입력한 공간 추가
+            fclose(fp);
+            fp = fopen("room.txt", "a+");
+            if(fp == NULL){
+                fprintf(stderr, "room file open error\n");
+                exit(1);
+            }
+            // 번호 안겹치면 추가
+            fputs("*", fp); // 체크 여부, **이면 삭제된 라인
+            fputs("|", fp);
+            char to_str[BUF_SIZE];
+            sprintf(to_str, "%d", unique);
+            fputs(to_str, fp); // 지점 번호
+            fputs("|", fp);	
+            sprintf(to_str, "%d", uni_room);
+            fputs(to_str, fp); // 방 번호
+            fputs("|", fp);
+            sprintf(to_str, "%d", room_type);
+            fputs(to_str, fp); // 허용 인원
+            fputs("|", fp);
+            fputs(room_name, fp); // 공간이름
+            fputs("|", fp);
+            sprintf(to_str, "%d", floor);
+            fputs(to_str, fp); // 층
+            fputs("|", fp);
+            sprintf(to_str, "%d", table);
+            fputs(to_str, fp); // 책상
+            fputs("|", fp);
+            sprintf(to_str, "%d", cpu);
+            fputs(to_str, fp); // 컴퓨터
+            fputs("|", fp);                                    
+            fputs("\n", fp); // enter            
+            fclose(fp);
+            fprintf(stdout, "%d 지점 %d 공간 수정 완료\n", unique, uni_room);
+            return;
+        }
         // 스터디 공간 삭제
         else if(edit_mode == 3){
             FILE *fp = fopen("study.txt", "r+t"); // 삭제할 fp선언
@@ -389,7 +485,7 @@ void master_mode(Study *study){
     }
 }
 
-void user_mode(Study *study){
+void user_mode(){
 
 }
 
