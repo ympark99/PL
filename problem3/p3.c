@@ -352,7 +352,35 @@ void master_mode(Study *study){
             fprintf(stdout, "%d 지점은 없으므로 삭제가 불가능합니다.\n", unique); // 일치 번호 없는 경우
         fclose(fp);
 
-        // todo : 지점 공간 삭제
+        // 해당 지점 공간 모두 삭제
+        fp = fopen("room.txt", "r+t"); // 삭제할 fp선언
+        if(fp == NULL){ // 해당 지점에 공간 없으면 리턴
+            return;
+        }
+        char *line;
+        char *cmpline;
+        fseek(fp, 0, SEEK_SET); // 처음으로 이동
+        while (!feof(fp)){
+            int ftells = ftell(fp); // 체크 표시 위해 위치 저장
+            char buf[BUF_SIZE]; // 한 라인 읽기
+            line = fgets(buf, BUF_SIZE, fp);
+            if(line == NULL) break; // 파일 끝인경우 종료
+            char *splitFile[BUF_SIZE] = {NULL, }; // 파일 크기, 파일 경로, hash 분리
+            char *ptr = strtok(buf, "|"); // | 기준으로 문자열 자르기
+            int idx = 0;
+            while (ptr != NULL){
+                if(idx < BUF_SIZE) splitFile[idx] = ptr;
+                idx++;
+                ptr = strtok(NULL, "|");
+            }
+            if(!strcmp(splitFile[0], "**")) continue; // 이미 삭제 됐다면, 패스
+            // 번호 겹치면 삭제
+            if(atoi(splitFile[1]) == unique){ // 지점 삭제
+                fseek(fp, ftells, SEEK_SET); // 체크 위치로 이동
+                fputs("**|", fp); // **으로 삭제 표시
+                fseek(fp, ftells, SEEK_SET); // 체크 위치로 이동
+            }     
+        }
         return;
     }
     else{
