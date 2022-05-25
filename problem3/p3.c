@@ -4,7 +4,8 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <string.h>
-
+#include <time.h>
+// todo : 시그널로 초기화면?
 // 스터디공간 study.txt
 // *|지점번호|
 
@@ -12,28 +13,12 @@
 // *|지점번호|방번호|허용인원|공간이름|층|책상|컴퓨터|
 
 // 예약 reserve.txt
-// *|지점번호|방번호|사용자id|날짜|시작시간|인원|이름|전번|주소|이메일|
+// *|지점번호|방번호|사용자id|날짜|시작시간|인원|
+
+// 사용자 user.txt
+// *|ID|이름|전번|주소|이메일
 
 #define BUF_SIZE 1024
-
-// // 지점 내 스터디 공간
-// typedef struct Room{
-//     struct Room *next;
-//     int unique_room; // 스터디 공간 고유 번호(1~5)
-//     int room_type; // 허용 인원(1~10인실)
-//     char name[10]; // 공간 이름
-//     int floor; // 위치하는 층
-//     int table; // 책상 수
-//     int cpu; // 보유 컴퓨터 개수
-//     char *reserved_time[24]; // 예약된 시간의 사용자 ID (0~23시 시작 시간)
-// }Room;
-
-// // 지점
-// typedef struct Study{
-//     struct Study *next;
-//     int unique_study; // 지점 고유 번호(1~6)
-//     Room *studyRoom; // 방
-// }Study;
 
 // 함수 정의
 void first_page();
@@ -41,6 +26,7 @@ void master_mode();
 void user_mode();
 bool find_file(FILE *fp, int target, int mode);
 bool delete_file(FILE *fp, int uni_study, int uni_room, int mode);
+bool check_id(char *text);
 
 int main(void){
     first_page();
@@ -485,8 +471,108 @@ void master_mode(){
     }
 }
 
+// 사용자 모드
 void user_mode(){
+    char username[BUF_SIZE];
+    fprintf(stdout, "사용자 ID를 입력하세요 : ");
+    scanf("%s", username);
+    if((strlen(username) < 5 || strlen(username) > 10) || !check_id(username)){
+        fprintf(stderr, "5~10 사이 영문 숫자 조합 입력\n");
+        return;
+    }
 
+    fprintf(stdout, "\n    사용자 모드\n");
+    fprintf(stdout, "--------------------\n");
+    fprintf(stdout, "1. 스터디 공간 조회\n");
+    fprintf(stdout, "2. 스터디 공간 예약\n");
+    fprintf(stdout, "3. 예약 조회 및 수정\n");
+    fprintf(stdout, "4. 초기 화면 이동\n");
+    fprintf(stdout, "--------------------\n");
+    fprintf(stdout, ">> ");
+
+    int num = 0;
+    scanf("%d", &num); // 모드 선택
+    if(num < 1 || num > 4){
+        fprintf(stderr, "잘못된 입력\n");
+        return;
+    }
+
+    if(num == 4) return;
+    // todo : 공간 조회
+    // 공간 예약
+    else if(num == 2){
+        // todo : 지점, 공간 입력받기
+        struct tm* t;
+        time_t base = time(NULL);
+        t = localtime(&base); // 오늘 날짜
+        fprintf(stdout, "Today %d-%d-%d, 당일 예약 불가\n", t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
+        int reserve_day;
+        fprintf(stdout, "예약일자 입력(YYMMDD) : ");
+        scanf("%d", &reserve_day);
+        // todo : 파일에서 존재하는지 검사
+        // 예약 일자 검증
+        int year, mon, day;
+        year = (reserve_day / 100000) * 10;
+        reserve_day %= 100000;
+        year += (reserve_day / 10000);
+        reserve_day %= 10000;
+        mon = (reserve_day / 1000) * 10;
+        reserve_day %= 1000;
+        mon += (reserve_day / 100);
+        reserve_day %= 100;
+        day = (reserve_day / 10) * 10;
+        reserve_day %= 10;
+        day += (reserve_day / 1);
+        
+        bool go_next = false;
+        if(t->tm_year - 100 < year) go_next = true;
+        else if(t->tm_year - 100 == year){
+            if(t->tm_mon + 1 < mon) go_next = true;
+            else if(t->tm_mon + 1 == mon){
+                if(t->tm_mday < day) go_next = true;
+            }
+        }
+        if(mon > 12 || mon < 0) go_next = false;
+        if(day > 31 || day < 0) go_next = false;
+        if((mon < 8 && (mon % 2 == 0)) && day > 30) go_next = false;
+        if((mon >= 8 && (mon % 2 == 1)) && day > 30) go_next = false;
+        if(((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0)){ // 윤년의 경우
+            if((mon == 2) && (day > 29)) go_next = false;
+        }
+        else if((mon == 2) && (day > 28)) go_next = false;
+
+        if(!go_next){
+                fprintf(stderr, "예약 일자가 잘못되었습니다.\n");
+                return;
+        }
+        fprintf(stdout, "시작 시간 입력 : ");
+        int reserve_start = 0;
+        scanf("%d", &reserve_start);
+        if(reserve_start < 0 || reserve_start > 23){
+            fprintf(stderr, "시작 시간 입력 오류\n");
+            return;            
+        }
+        // todo : 시작시간 존재하는지 검사
+
+        fprintf(stdout, "사용 예정 시간 입력 : ");
+        int use_time = 0;
+        scanf("%d", &use_time);
+        if(use_time > 24){
+            fprintf(stderr, "사용 예정 시간 오류\n");
+            return;            
+        }
+        // todo : 해당시간 존재하는지 검사
+
+        fprintf(stdout, "사용 인원 입력 : ");
+        int use_people = 0;
+        scanf("%d", &use_people);
+        if(use_people > 10){
+            fprintf(stderr, "1~10 사이의 숫자만 가능\n");
+            return;            
+        }
+        // todo : 해당 공간 사용인원 검사
+    }
+    // todo : 예약 조회 및 수정
 }
 
 // 지점 / 공간 있는지 탐색 : target -> 찾는 고유 번호, mode -> 1 : 지점 2 : 공간
@@ -548,4 +634,20 @@ bool delete_file(FILE *fp, int uni_study, int uni_room, int mode){
         }        
     }
     return false;
+}
+
+bool check_id(char *id){
+    bool is_num = false;
+    bool is_alpha = false;
+
+    for(int i = 0; i < strlen(id); i++){
+        char c = id[i];
+        if((c >= '0' && c <= '9'))
+            is_num = true;
+        else if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+            is_alpha = true;
+        else return false;
+    }
+    if(is_num && is_alpha) return true;
+    else return false;
 }
