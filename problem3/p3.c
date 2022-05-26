@@ -13,9 +13,9 @@
 // *|지점번호|방번호|허용인원|공간이름|층|책상|컴퓨터|
 
 // 예약 reserve.txt
-// *|지점번호|방번호|사용자id|날짜|시작시간|인원|
+// *|지점번호|방번호|사용자id|날짜|시작시간|종료시간|사용인원|
 
-// 사용자 user.txt
+// 사용자 user.txt(미정)
 // *|ID|이름|전번|주소|이메일
 
 #define BUF_SIZE 1024
@@ -330,7 +330,6 @@ void master_mode(){
                 fprintf(stderr, "room file open error\n");
                 exit(1);
             }
-            // 번호 안겹치면 추가
             fputs("*", fp); // 체크 여부, **이면 삭제된 라인
             fputs("|", fp);
             char to_str[BUF_SIZE];
@@ -498,32 +497,98 @@ void user_mode(){
     }
 
     if(num == 4) return;
-    // todo : 공간 조회
+    // todo : 1. 공간 조회
     // 공간 예약
     else if(num == 2){
-        // todo : 지점, 공간 입력받기
+        // 지점 번호 확인
+        FILE *fp = fopen("study.txt", "r+t");
+        if(fp == NULL){
+            fprintf(stdout, "현재 추가된 지점이 없습니다\n");
+            return;
+        }
+        int unique = 0;
+        fprintf(stdout, "예약할 고유 지점 번호 입력 : ");
+        scanf("%d", &unique); // 지점 번호 선택
+        if(unique < 1 || unique > 6){
+            fprintf(stderr, "고유 지점 번호 입력 오류\n");
+            return;
+        }
+        fclose(fp);
+        fp = fopen("room.txt", "r+t"); // 삭제할 fp선언
+        if(fp == NULL){
+            fprintf(stdout, "현재 추가된 공간이 없습니다\n");
+            return;
+        }
+        // 예약할 고유 공간 번호 입력받기
+        int uni_room = 0;
+        fprintf(stdout, "예약할 고유 공간 번호 입력 : ");
+        scanf("%d", &uni_room); // 공간 번호 선택
+        if(uni_room < 1 || uni_room > 5){
+            fprintf(stderr, "고유 공간 번호 입력 오류\n");
+            return;
+        }
+        // 예약할 공간 있는지 확인
+        if(!find_file(fp, uni_room, 2)){
+            fprintf(stderr, "입력한 %d 공간이 없습니다.\n", uni_room);
+            fclose(fp);
+            return;
+        }
+
+        // 사용 인원 입력
+        fprintf(stdout, "사용 인원 입력 : ");
+        int use_people = 0;
+        scanf("%d", &use_people);
+        if(use_people > 10){
+            fprintf(stderr, "1~10 사이의 숫자만 가능\n");
+            return;            
+        }
+        // 해당 공간 사용인원 검사
+        char *line;
+        char *cmpline;
+        fseek(fp, 0, SEEK_SET); // 처음으로 이동
+        while (!feof(fp)){
+            char buf[BUF_SIZE]; // 한 라인 읽기
+            line = fgets(buf, BUF_SIZE, fp);
+            if(line == NULL) break; // 파일 끝인경우 종료
+            char *splitFile[BUF_SIZE] = {NULL, }; // 파일 크기, 파일 경로, hash 분리
+            char *ptr = strtok(buf, "|"); // | 기준으로 문자열 자르기
+            int idx = 0;
+            while (ptr != NULL){
+                if(idx < BUF_SIZE) splitFile[idx] = ptr;
+                idx++;
+                ptr = strtok(NULL, "|");
+            }
+            if(!strcmp(splitFile[0], "**")) continue; // 이미 체크 됐다면, 패스
+            if(atoi(splitFile[3]) < use_people){ // 허용 인원보다 크면 에러
+                fprintf(stderr, "허용 인원 초과 -> 해당 공간은 %d명까지 가능합니다.\n", atoi(splitFile[3]));
+                fclose(fp);
+                return;
+            }
+        }
+        fclose(fp);
+        // 예약일자 입력
         struct tm* t;
         time_t base = time(NULL);
         t = localtime(&base); // 오늘 날짜
-        fprintf(stdout, "Today %d-%d-%d, 당일 예약 불가\n", t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
-        int reserve_day;
+        fprintf(stdout, "Today : %d-%d-%d | 당일 예약은 불가\n", t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
+        int reserve_day, reserve_copy;
         fprintf(stdout, "예약일자 입력(YYMMDD) : ");
         scanf("%d", &reserve_day);
-        // todo : 파일에서 존재하는지 검사
+        reserve_copy = reserve_day;
         // 예약 일자 검증
         int year, mon, day;
-        year = (reserve_day / 100000) * 10;
-        reserve_day %= 100000;
-        year += (reserve_day / 10000);
-        reserve_day %= 10000;
-        mon = (reserve_day / 1000) * 10;
-        reserve_day %= 1000;
-        mon += (reserve_day / 100);
-        reserve_day %= 100;
-        day = (reserve_day / 10) * 10;
-        reserve_day %= 10;
-        day += (reserve_day / 1);
-        
+        year = (reserve_copy / 100000) * 10;
+        reserve_copy %= 100000;
+        year += (reserve_copy / 10000);
+        reserve_copy %= 10000;
+        mon = (reserve_copy / 1000) * 10;
+        reserve_copy %= 1000;
+        mon += (reserve_copy / 100);
+        reserve_copy %= 100;
+        day = (reserve_copy / 10) * 10;
+        reserve_copy %= 10;
+        day += (reserve_copy / 1);
+
         bool go_next = false;
         if(t->tm_year - 100 < year) go_next = true;
         else if(t->tm_year - 100 == year){
@@ -540,37 +605,98 @@ void user_mode(){
             if((mon == 2) && (day > 29)) go_next = false;
         }
         else if((mon == 2) && (day > 28)) go_next = false;
-
         if(!go_next){
                 fprintf(stderr, "예약 일자가 잘못되었습니다.\n");
                 return;
         }
-        fprintf(stdout, "시작 시간 입력 : ");
+
+        fprintf(stdout, "시작 시간 입력(24시간 단위) : ");
         int reserve_start = 0;
         scanf("%d", &reserve_start);
-        if(reserve_start < 0 || reserve_start > 23){
-            fprintf(stderr, "시작 시간 입력 오류\n");
+        if(reserve_start < 8 || reserve_start > 21){
+            fprintf(stderr, "오전 8시 ~ 밤 10시까지 예약 가능합니다.\n");
             return;            
         }
-        // todo : 시작시간 존재하는지 검사
 
         fprintf(stdout, "사용 예정 시간 입력 : ");
         int use_time = 0;
         scanf("%d", &use_time);
-        if(use_time > 24){
-            fprintf(stderr, "사용 예정 시간 오류\n");
+        if(use_time == 0){
+            fprintf(stderr, "1시간 이상부터 입력\n");
             return;            
         }
-        // todo : 해당시간 존재하는지 검사
-
-        fprintf(stdout, "사용 인원 입력 : ");
-        int use_people = 0;
-        scanf("%d", &use_people);
-        if(use_people > 10){
-            fprintf(stderr, "1~10 사이의 숫자만 가능\n");
+        int reserve_end = reserve_start + use_time; // 종료 시간
+        if(reserve_end > 22){
+            fprintf(stderr, "08시 ~ 22시까지 예약 가능합니다.\n");
             return;            
         }
-        // todo : 해당 공간 사용인원 검사
+        // 파일에서 예약 일자에 시작~종료시간 존재하는지 검사
+        fp = fopen("reserve.txt", "a+");
+        if(fp == NULL){
+            fprintf(stderr, "reserve file open error\n");
+            exit(1);
+        }
+        fseek(fp, 0, SEEK_SET); // 처음으로 이동
+        while (!feof(fp)){	
+            char buf[BUF_SIZE]; // 한 라인 읽기
+            line = fgets(buf, BUF_SIZE, fp);
+            if(line == NULL) break; // 파일 끝인경우 종료
+            char *splitFile[BUF_SIZE] = {NULL, }; // 파일 크기, 파일 경로, hash 분리
+            char *ptr = strtok(buf, "|"); // | 기준으로 문자열 자르기
+            int idx = 0;
+            while (ptr != NULL){
+                if(idx < BUF_SIZE) splitFile[idx] = ptr;
+                idx++;
+                ptr = strtok(NULL, "|");
+            }
+            if(!strcmp(splitFile[0], "**")) continue; // 이미 삭제 됐다면, 패스
+            bool is_err = true;
+            // 예약 일자 겹치는 날
+            if(atoi(splitFile[4]) == reserve_day){
+                // 예약 시작 < 기존 시작 && 예약 종료 <= 기존 시작
+                if((reserve_start < atoi(splitFile[5])) && (reserve_end <= atoi(splitFile[5]))){
+                    is_err = false;
+                }
+                // 예약 시작 >= 기존 종료
+                else if(reserve_start >= atoi(splitFile[6])){
+                    is_err = false;
+                }
+            }
+            if(is_err){
+                fprintf(stdout, "%d시 ~ %d시 사이 예약이 있습니다.\n", atoi(splitFile[5]), atoi(splitFile[6]));
+                fclose(fp);
+                return;
+            }
+        }
+        // 예약시간 중복 없으면 추가
+        fputs("*", fp); // 체크 여부, **이면 삭제된 라인
+        fputs("|", fp);
+        char to_str[BUF_SIZE];
+        sprintf(to_str, "%d", unique);
+        fputs(to_str, fp); // 지점 번호
+        fputs("|", fp);	
+        sprintf(to_str, "%d", uni_room);
+        fputs(to_str, fp); // 방 번호
+        fputs("|", fp);
+        fputs(username, fp); // 사용자 id
+        fputs("|", fp);
+        sprintf(to_str, "%d", reserve_day);
+        fputs(to_str, fp); // 날짜
+        fputs("|", fp);
+        sprintf(to_str, "%d", reserve_start);
+        fputs(to_str, fp); // 시작시간
+        fputs("|", fp);
+        sprintf(to_str, "%d", reserve_end);
+        fputs(to_str, fp); // 종료시간
+        fputs("|", fp);
+        sprintf(to_str, "%d", use_people);
+        fputs(to_str, fp); // 사용인원
+        fputs("|", fp);
+        fputs("\n", fp); // enter            
+        fclose(fp);
+        fprintf(stdout, "%d 지점 %d 공간 예약 완료\n", unique, uni_room);
+        fprintf(stdout, "예약 시간 : %d %d시 ~ %d시\n", reserve_day, reserve_start, reserve_end);
+        return;
     }
     // todo : 예약 조회 및 수정
 }
