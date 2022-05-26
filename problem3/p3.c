@@ -462,6 +462,7 @@ void master_mode(){
                 fseek(fp, ftells, SEEK_SET); // 체크 위치로 이동
             }     
         }
+        fclose(fp);
         return;
     }
     else{
@@ -497,8 +498,42 @@ void user_mode(){
     }
 
     if(num == 4) return;
-    // todo : 1. 공간 조회
-    // 공간 예약
+    // 1. 스터디 공간 조회
+    else if(num == 1){
+        // 지점 번호 확인
+        FILE *fp = fopen("room.txt", "r+t");
+        if(fp == NULL){
+            fprintf(stdout, "스터디 공간이 없습니다.\n");
+            return;
+        }
+        fprintf(stdout, "\n                            스터디 공간 조회\n");
+        fprintf(stdout, "------------------------------------------------------------------------\n");
+        char *line;
+        char *cmpline;
+        fseek(fp, 0, SEEK_SET); // 처음으로 이동
+        while (!feof(fp)){
+            int ftells = ftell(fp); // 체크 표시 위해 위치 저장
+            char buf[BUF_SIZE]; // 한 라인 읽기
+            line = fgets(buf, BUF_SIZE, fp);
+            if(line == NULL) break; // 파일 끝인경우 종료
+            char *splitFile[BUF_SIZE] = {NULL, }; // 파일 크기, 파일 경로, hash 분리
+            char *ptr = strtok(buf, "|"); // | 기준으로 문자열 자르기
+            int idx = 0;
+            while (ptr != NULL){
+                if(idx < BUF_SIZE) splitFile[idx] = ptr;
+                idx++;
+                ptr = strtok(NULL, "|");
+            }
+            if(!strcmp(splitFile[0], "**")) continue; // 이미 삭제 됐다면, 패스
+            // 스터디 공간 정보 출력
+            fprintf(stdout, "%s | 지점번호 : %d | 공간번호 : %d | 최대 %-2d명 | 책상 %d개 | 컴퓨터 %d개\n", 
+            splitFile[4], atoi(splitFile[1]),atoi(splitFile[2]), atoi(splitFile[3]), atoi(splitFile[5]), atoi(splitFile[6]));
+        }
+        fprintf(stdout, "------------------------------------------------------------------------\n");
+        fclose(fp);
+        return;
+    }
+    // 2. 공간 예약
     else if(num == 2){
         // 지점 번호 확인
         FILE *fp = fopen("study.txt", "r+t");
@@ -570,7 +605,7 @@ void user_mode(){
         struct tm* t;
         time_t base = time(NULL);
         t = localtime(&base); // 오늘 날짜
-        fprintf(stdout, "Today : %d-%d-%d | 당일 예약은 불가\n", t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
+        fprintf(stdout, "Today : %d-%d-%d | 명일부터 예약 가능\n", t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
         int reserve_day, reserve_copy;
         fprintf(stdout, "예약일자 입력(YYMMDD) : ");
         scanf("%d", &reserve_day);
