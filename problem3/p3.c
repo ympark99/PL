@@ -1,11 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
-// todo : 시그널로 초기화면?
 // 스터디공간 study.txt
 // *|지점번호|
 
@@ -15,16 +13,13 @@
 // 예약 reserve.txt
 // *|지점번호|방번호|사용자id|날짜|시작시간|종료시간|사용인원|
 
-// 사용자 user.txt(미정)
-// *|ID|이름|전번|주소|이메일
-
 #define BUF_SIZE 1024
 
 // 함수 정의
 void first_page();
 void master_mode();
 void user_mode();
-bool find_file(FILE *fp, int target, int mode);
+bool find_file(FILE *fp, int uni_study, int uni_room, int mode);
 bool delete_file(FILE *fp, int uni_study, int uni_room, int mode);
 bool check_id(char *text);
 int reserve_space(char *username, int mode);
@@ -177,7 +172,7 @@ void master_mode(){
                 return;
             }
             // 지점 있는지 확인
-            if(!find_file(fp, unique, 1)){
+            if(!find_file(fp, unique, 0, 1)){
                 fprintf(stderr, "입력한 %d 지점이 없습니다.\n", unique);
                 fclose(fp);
                 return;
@@ -275,12 +270,6 @@ void master_mode(){
                 fprintf(stderr, "고유 지점 번호 입력 오류\n");
                 return;
             }
-            // 지점 있는지 확인
-            if(!find_file(fp, unique, 1)){
-                fprintf(stderr, "입력한 %d 지점이 없습니다.\n", unique);
-                fclose(fp);
-                return;
-            }
             fclose(fp);
             fp = fopen("room.txt", "r+t"); // 삭제할 fp선언
             if(fp == NULL){
@@ -295,9 +284,9 @@ void master_mode(){
                 fprintf(stderr, "고유 공간 번호 입력 오류\n");
                 return;
             }
-            // 수정할 공간 있는지 확인
-            if(!find_file(fp, uni_room, 2)){
-                fprintf(stderr, "입력한 %d 공간이 없습니다.\n", uni_room);
+            // 수정할 지점의 공간 있는지 확인
+            if(!find_file(fp, unique, uni_room, 2)){
+                fprintf(stderr, "입력한 %d 지점 %d 공간이 없습니다.\n", unique, uni_room);
                 fclose(fp);
                 return;
             }
@@ -374,12 +363,6 @@ void master_mode(){
                 fprintf(stderr, "고유 지점 번호 입력 오류\n");
                 return;
             }
-            // 삭제할 지점 있는지 확인
-            if(!find_file(fp, unique, 1)){
-                fprintf(stderr, "입력한 %d 지점이 없습니다.\n", unique);
-                fclose(fp);
-                return;
-            }
             fclose(fp);
             fp = fopen("room.txt", "r+t"); // 삭제할 fp선언
             if(fp == NULL){
@@ -394,9 +377,9 @@ void master_mode(){
                 fprintf(stderr, "고유 공간 번호 입력 오류\n");
                 return;
             }
-            // 삭제할 공간 있는지 확인
-            if(!find_file(fp, uni_room, 2)){
-                fprintf(stderr, "입력한 %d 공간이 없습니다.\n", uni_room);
+            // 삭제할 지점의 공간 있는지 확인
+            if(!find_file(fp, unique, uni_room, 2)){
+                fprintf(stderr, "입력한 %d 지점 %d 공간이 없습니다.\n", unique, uni_room);
                 fclose(fp);
                 return;
             }
@@ -638,8 +621,8 @@ void user_mode(){
     }
 }
 
-// 지점 / 공간 있는지 탐색 : target -> 찾는 고유 번호, mode -> 1 : 지점 2 : 공간
-bool find_file(FILE *fp, int target, int mode){
+// 지점, 공간 있는지 탐색 : mode -> 1 : 지점 2 : 지점&공간
+bool find_file(FILE *fp, int uni_study, int uni_room, int mode){
     char *line;
     char *cmpline;
     fseek(fp, 0, SEEK_SET); // 처음으로 이동
@@ -656,9 +639,9 @@ bool find_file(FILE *fp, int target, int mode){
             ptr = strtok(NULL, "|");
         }
         if(!strcmp(splitFile[0], "**")) continue; // 이미 체크 됐다면, 패스
-        if((mode == 1) && (atoi(splitFile[1]) == target)) // 지점 탐색
+        if((mode == 1) && (atoi(splitFile[1]) == uni_study)) // 지점 탐색
             return true;
-        else if((mode == 2) && (atoi(splitFile[2]) == target)) // 공간 탐색
+        else if((mode == 2) && ((atoi(splitFile[1]) == uni_study) && (atoi(splitFile[2]) == uni_room))) // 공간 탐색
             return true;
     }
     return false;
@@ -747,8 +730,8 @@ int reserve_space(char *username, int mode){
         return -1;
     }
     // 예약할 공간 있는지 확인
-    if(!find_file(fp, uni_room, 2)){
-        fprintf(stderr, "입력한 %d 공간이 없습니다.\n", uni_room);
+    if(!find_file(fp, unique, uni_room, 2)){
+        fprintf(stderr, "입력한 %d 지점 %d 공간이 없습니다.\n", unique, uni_room);
         fclose(fp);
         return -1;
     }
@@ -829,7 +812,7 @@ int reserve_space(char *username, int mode){
             return -1;
     }
 
-    fprintf(stdout, "시작 시간 입력(24시간 단위) : ");
+    fprintf(stdout, "시작 시간 입력(24시간 단위, 08시 ~ 21시 사이) : ");
     int reserve_start = 0;
     scanf("%d", &reserve_start);
     if(reserve_start < 8 || reserve_start > 21){
