@@ -564,10 +564,11 @@ void user_mode(){
         }
 
         int edit_cnt = 0;
-        fprintf(stdout, "수정할 번호 입력(0 -> 초기화면) >> ");
+        fprintf(stdout, "수정할 번호 입력 >> ");
         scanf("%d", &edit_cnt);
 
-        if(edit_cnt == 0){
+        if(edit_cnt > reserve_cnt){
+            fprintf(stderr, "올바르지 않은 번호 입력\n");
             fclose(fp);
             return; // 0 입력시 리턴
         }
