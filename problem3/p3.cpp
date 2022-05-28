@@ -6,10 +6,25 @@
 #include <string.h>
 #include <time.h>
 
-class Study{
+class Study{ // 지점, 공간
 public:
     int uni_study = 0; // 지점 번호
     int uni_room = 0; // 공간 번호
+    int floor = 1;
+    int table = 15;
+    int cpu = 15;
+};
+
+class Reserve{ // 예약
+public:
+    int ymd = 0; // YYMMDD
+    int start = 0; // 시작 시간
+    int end = 0; // 종료 시간
+    int use_people = 0; // 사용인원
+    int use_time = 0; // 사용시간
+    int year = 0; // 연
+    int mon = 0; // 월
+    int day = 0; // 일
 };
 
 #define BUF_SIZE 1024
@@ -221,9 +236,6 @@ void master_mode(){
                     return;
                 }
             }
-            int floor = 1;
-            int table = 15;
-            int cpu = 10;
             // 번호 안겹치면 추가
             fputs("*", fp); // 체크 여부, **이면 삭제된 라인
             fputs("|", fp);
@@ -239,13 +251,13 @@ void master_mode(){
             fputs("|", fp);
             fputs("space", fp); // 공간이름
             fputs("|", fp);
-            sprintf(to_str, "%d", floor);
+            sprintf(to_str, "%d", study.floor);
             fputs(to_str, fp); // 층
             fputs("|", fp);
-            sprintf(to_str, "%d", table);
+            sprintf(to_str, "%d", study.table);
             fputs(to_str, fp); // 책상
             fputs("|", fp);
-            sprintf(to_str, "%d", cpu);
+            sprintf(to_str, "%d", study.cpu);
             fputs(to_str, fp); // 컴퓨터
             fputs("|", fp);                                    
             fputs("\n", fp); // enter            
@@ -298,15 +310,12 @@ void master_mode(){
             char room_name[BUF_SIZE]; // 이름
             fprintf(stdout, "수정할 이름 입력 : ");
             scanf("%s", room_name);
-            int floor; // 층
             fprintf(stdout, "수정할 위치하는 층 입력 : ");
-            scanf("%d", &floor);
-            int table; // 책상 수
+            scanf("%d", &study.floor);
             fprintf(stdout, "수정할 책상 개수 입력 : ");
-            scanf("%d", &table);
-            int cpu; // 컴퓨터
+            scanf("%d", &study.table);
             fprintf(stdout, "수정할 컴퓨터 개수 입력 : ");
-            scanf("%d", &cpu);
+            scanf("%d", &study.cpu);
 
             delete_file(fp, study.uni_study, study.uni_room, 2); // 기존 공간 삭제
             // 입력한 공간 추가
@@ -330,13 +339,13 @@ void master_mode(){
             fputs("|", fp);
             fputs(room_name, fp); // 공간이름
             fputs("|", fp);
-            sprintf(to_str, "%d", floor);
+            sprintf(to_str, "%d", study.floor);
             fputs(to_str, fp); // 층
             fputs("|", fp);
-            sprintf(to_str, "%d", table);
+            sprintf(to_str, "%d", study.table);
             fputs(to_str, fp); // 책상
             fputs("|", fp);
-            sprintf(to_str, "%d", cpu);
+            sprintf(to_str, "%d", study.cpu);
             fputs(to_str, fp); // 컴퓨터
             fputs("|", fp);                                    
             fputs("\n", fp); // enter            
@@ -696,7 +705,9 @@ bool check_id(char *id){
 // 공간 예약(mode 0 -> 신규, mode 1 -> 수정)
 // return -1 -> err 1 -> success
 int reserve_space(char *username, int mode){
-    Study study = Study();
+    Study study = Study(); // Study 객체
+    Reserve reserve = Reserve(); // Reserve 객체
+
     // 지점 번호 확인
     FILE *fp = fopen("study.txt", "r+t");
     if(fp == NULL){
@@ -731,9 +742,8 @@ int reserve_space(char *username, int mode){
 
     // 사용 인원 입력
     fprintf(stdout, "사용 인원 입력 : ");
-    int use_people = 0;
-    scanf("%d", &use_people);
-    if(use_people > 10){
+    scanf("%d", &reserve.use_people);
+    if(reserve.use_people > 10){
         fprintf(stderr, "1~10 사이의 숫자만 가능\n");
         return -1;            
     }
@@ -754,7 +764,7 @@ int reserve_space(char *username, int mode){
             ptr = strtok(NULL, "|");
         }
         if(!strcmp(splitFile[0], "**")) continue; // 이미 체크 됐다면, 패스
-        if(atoi(splitFile[3]) < use_people){ // 허용 인원보다 크면 에러
+        if(atoi(splitFile[3]) < reserve.use_people){ // 허용 인원보다 크면 에러
             fprintf(stderr, "허용 인원 초과 -> 해당 공간은 %d명까지 가능합니다.\n", atoi(splitFile[3]));
             fclose(fp);
             return -1;
@@ -766,62 +776,59 @@ int reserve_space(char *username, int mode){
     time_t base = time(NULL);
     t = localtime(&base); // 오늘 날짜
     fprintf(stdout, "Today : %d-%d-%d | 명일부터 예약 가능\n", t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
-    int reserve_day, reserve_copy;
+    int reserve_copy;
     fprintf(stdout, "예약일자 입력(YYMMDD) : ");
-    scanf("%d", &reserve_day);
-    reserve_copy = reserve_day;
+    scanf("%d", &reserve.ymd);
+    reserve_copy = reserve.ymd;
     // 예약 일자 검증
-    int year, mon, day;
-    year = (reserve_copy / 100000) * 10;
+    reserve.year = (reserve_copy / 100000) * 10;
     reserve_copy %= 100000;
-    year += (reserve_copy / 10000);
+    reserve.year += (reserve_copy / 10000);
     reserve_copy %= 10000;
-    mon = (reserve_copy / 1000) * 10;
+    reserve.mon = (reserve_copy / 1000) * 10;
     reserve_copy %= 1000;
-    mon += (reserve_copy / 100);
+    reserve.mon += (reserve_copy / 100);
     reserve_copy %= 100;
-    day = (reserve_copy / 10) * 10;
+    reserve.day = (reserve_copy / 10) * 10;
     reserve_copy %= 10;
-    day += (reserve_copy / 1);
+    reserve.day += (reserve_copy / 1);
 
     bool go_next = false;
-    if(t->tm_year - 100 < year) go_next = true;
-    else if(t->tm_year - 100 == year){
-        if(t->tm_mon + 1 < mon) go_next = true;
-        else if(t->tm_mon + 1 == mon){
-            if(t->tm_mday < day) go_next = true;
+    if(t->tm_year - 100 < reserve.year) go_next = true;
+    else if(t->tm_year - 100 == reserve.year){
+        if(t->tm_mon + 1 < reserve.mon) go_next = true;
+        else if(t->tm_mon + 1 == reserve.mon){
+            if(t->tm_mday < reserve.day) go_next = true;
         }
     }
-    if(mon > 12 || mon < 0) go_next = false;
-    if(day > 31 || day < 0) go_next = false;
-    if((mon < 8 && (mon % 2 == 0)) && day > 30) go_next = false;
-    if((mon >= 8 && (mon % 2 == 1)) && day > 30) go_next = false;
-    if(((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0)){ // 윤년의 경우
-        if((mon == 2) && (day > 29)) go_next = false;
+    if(reserve.mon > 12 || reserve.mon < 0) go_next = false;
+    if(reserve.day > 31 || reserve.day < 0) go_next = false;
+    if((reserve.mon < 8 && (reserve.mon % 2 == 0)) && reserve.day > 30) go_next = false;
+    if((reserve.mon >= 8 && (reserve.mon % 2 == 1)) && reserve.day > 30) go_next = false;
+    if(((reserve.year % 4 == 0) && (reserve.year % 100 != 0)) || (reserve.year % 400 == 0)){ // 윤년의 경우
+        if((reserve.mon == 2) && (reserve.day > 29)) go_next = false;
     }
-    else if((mon == 2) && (day > 28)) go_next = false;
+    else if((reserve.mon == 2) && (reserve.day > 28)) go_next = false;
     if(!go_next){
             fprintf(stderr, "예약 일자가 잘못되었습니다.\n");
             return -1;
     }
 
-    fprintf(stdout, "시작 시간 입력(24시간 단위) : ");
-    int reserve_start = 0;
-    scanf("%d", &reserve_start);
-    if(reserve_start < 8 || reserve_start > 21){
+    fprintf(stdout, "시작 시간 입력(24시간 단위, 08시 ~ 21시 사이) : ");
+    scanf("%d", &reserve.start);
+    if(reserve.start < 8 || reserve.start > 21){
         fprintf(stderr, "오전 8시 ~ 밤 10시까지 예약 가능합니다.\n");
         return -1;            
     }
 
     fprintf(stdout, "사용 예정 시간 입력 : ");
-    int use_time = 0;
-    scanf("%d", &use_time);
-    if(use_time == 0){
+    scanf("%d", &reserve.use_time);
+    if(reserve.use_time == 0){
         fprintf(stderr, "1시간 이상부터 입력\n");
         return -1;            
     }
-    int reserve_end = reserve_start + use_time; // 종료 시간
-    if(reserve_end > 22){
+    reserve.end = reserve.start + reserve.use_time; // 종료 시간
+    if(reserve.end > 22){
         fprintf(stderr, "08시 ~ 22시까지 예약 가능합니다.\n");
         return -1;            
     }
@@ -849,13 +856,13 @@ int reserve_space(char *username, int mode){
         // 지점 번호, 공간 번호 같을때
         if((atoi(splitFile[1]) == study.uni_study) && (atoi(splitFile[2]) == study.uni_room)){
             // 예약 일자 겹치는 날
-            if(atoi(splitFile[4]) == reserve_day){
+            if(atoi(splitFile[4]) == reserve.ymd){
                 // 예약 시작 < 기존 시작 && 예약 종료 <= 기존 시작
-                if((reserve_start < atoi(splitFile[5])) && (reserve_end <= atoi(splitFile[5]))){
+                if((reserve.start < atoi(splitFile[5])) && (reserve.end <= atoi(splitFile[5]))){
                     is_err = false;
                 }
                 // 예약 시작 >= 기존 종료
-                else if(reserve_start >= atoi(splitFile[6])){
+                else if(reserve.start >= atoi(splitFile[6])){
                     is_err = false;
                 }
                 else is_err = true;
@@ -879,21 +886,21 @@ int reserve_space(char *username, int mode){
     fputs("|", fp);
     fputs(username, fp); // 사용자 id
     fputs("|", fp);
-    sprintf(to_str, "%d", reserve_day);
+    sprintf(to_str, "%d", reserve.ymd);
     fputs(to_str, fp); // 날짜
     fputs("|", fp);
-    sprintf(to_str, "%d", reserve_start);
+    sprintf(to_str, "%d", reserve.start);
     fputs(to_str, fp); // 시작시간
     fputs("|", fp);
-    sprintf(to_str, "%d", reserve_end);
+    sprintf(to_str, "%d", reserve.end);
     fputs(to_str, fp); // 종료시간
     fputs("|", fp);
-    sprintf(to_str, "%d", use_people);
+    sprintf(to_str, "%d", reserve.use_people);
     fputs(to_str, fp); // 사용인원
     fputs("|", fp);
     fputs("\n", fp); // enter            
     fclose(fp);
     fprintf(stdout, "%d 지점 %d 공간 예약 완료\n", study.uni_study, study.uni_room);
-    fprintf(stdout, "예약 시간 : %d %d시 ~ %d시\n", reserve_day, reserve_start, reserve_end);
+    fprintf(stdout, "예약 시간 : %d %d시 ~ %d시\n", reserve.ymd, reserve.start, reserve.end);
     return 1;
 }
