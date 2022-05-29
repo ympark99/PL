@@ -3,7 +3,7 @@
 ### 다음의 EBNF로 문법이 정의되는 수식을 위한 계산기를(Recursive-Descent Parser 구현 포함) C/C++, Java, Python으로 각각 구현하시오.
 
 ### expr → term {+ term | - term }
-### term → <factor> {* <factor> | / <factor>} 
+### term → factor {* factor | / factor } 
 ### factor → [ - ] ( number | (expr) ) 
 ### number → digit {digit} 
 ### digit → 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
